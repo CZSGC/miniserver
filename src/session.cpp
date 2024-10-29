@@ -1,3 +1,5 @@
+#include "reader.hpp"
+#include "result.hpp"
 #include <asio.hpp>
 #include <iostream>
 #include <packet.hpp>
@@ -27,7 +29,7 @@ void Session::handleWrite(const std::error_code &error,
     send_que_.pop();
     if (!send_que_.empty()) {
       auto &packet = send_que_.front();
-      asio::async_write(socket_, asio::buffer(packet->data_, packet->max_len_),
+      asio::async_write(socket_, asio::buffer(packet->data_, packet->len_),
                         std::bind(&Session::handleWrite, this,
                                   std::placeholders::_1, selfShared));
     }
@@ -37,9 +39,12 @@ void Session::handleWrite(const std::error_code &error,
   }
 }
 
-Session::Session(asio::io_context &ioc) : socket_(ioc) {}
+Session::Session(asio::io_context &ioc, std::string filePath)
+    : socket_(ioc), reader(filePath) {}
 
 void Session::Send(char *packet, int maxLength) {
+  while (reader.result != FTPResult::FileResult::over) {
+  }
   bool pending = false;
   std::lock_guard<std::mutex> lock(send_lock_);
   if (send_que_.size() > 0) {

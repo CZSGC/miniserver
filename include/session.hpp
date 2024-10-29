@@ -1,5 +1,6 @@
 #pragma once
 #include "packet.hpp"
+#include "reader.hpp"
 #include <asio.hpp>
 #include <queue>
 
@@ -15,7 +16,9 @@ public:
     return pointer(new Session(io_context));
   }
   void Send(char *msg, int max_length);
-  Session(asio::io_context &io_context);
+  Session(
+      asio::io_context &io_context,
+      std::string filePath = "/home/chenzushou/project/miniftp/test/test.txt");
 
 private:
   void handleRead(const std::error_code &error, size_t bytes_transferred,
@@ -30,4 +33,5 @@ private:
   std::string message_;
   std::mutex send_lock_;
   std::queue<std::shared_ptr<Packet>> send_que_;
+  IO::Reader reader;
 };

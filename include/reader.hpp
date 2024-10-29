@@ -1,4 +1,6 @@
 #pragma once
+#include "packet.hpp"
+#include "result.hpp"
 #include <cstddef>
 #include <fstream>
 #include <inttypes.h>
@@ -9,28 +11,47 @@
 namespace IO {
 class Reader {
 public:
-  void readfile(std::string filePath) {
-    std::ifstream inputFile(filePath, std::ios::binary | std::ios::ate);
+  Packet readfile(size_t length) {
+    result = FTPResult::FileResult::reading;
+
+    if (currentpos + length >= fileSize) {
+      result = FTPResult::FileResult::readOver;
+      length = fileSize - currentpos;
+    }
+    inputFile.seekg(currentpos, std::ios::beg);
+
+    data.resize(length);
+
+    inputFile.read(data.data(), length);
+
+    if (inputFile.fail()) {
+      std::cerr << "读取文件失败" << std::endl;
+    }
+    currentpos += length;
+    return Packet(data.data(), length);
+  }
+  Reader(const std::string &filePath) {
+    result = FTPResult::FileResult::waitForRead;
+    inputFile.open(filePath, std::ios::binary | std::ios::ate);
 
     if (!inputFile.is_open()) {
       std::cerr << "无法打开文件 " << filePath << std::endl;
     }
 
-    std::streamsize fileSize = inputFile.tellg();
-    inputFile.seekg(0, std::ios::beg);
-
-    data.resize(fileSize);
-
-    inputFile.read(data.data(), fileSize);
-
-    if (inputFile.fail()) {
-      std::cerr << "读取文件失败" << std::endl;
-    }
-
-    inputFile.close();
+    fileSize = inputFile.tellg();
   }
+  ~Reader() {
+    if (inputFile.is_open()) {
+      inputFile.close();
+      result = FTPResult::FileResult::over;
+    }
+  }
+
   std::vector<char> data;
-  size_t length;
+  std::ifstream inputFile;
+  size_t currentpos = 0;
+  std::streamsize fileSize;
+  FTPResult::FileResult result = FTPResult::FileResult::waitForRead;
 };
 
 } // namespace IO
