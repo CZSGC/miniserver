@@ -15,7 +15,7 @@ public:
   static pointer create(asio::io_context &io_context) {
     return pointer(new Session(io_context));
   }
-  void Send(char *msg, int max_length);
+  void Send();
   Session(
       asio::io_context &io_context,
       std::string filePath = "/home/chenzushou/project/miniftp/test/test.txt");

@@ -10,7 +10,7 @@ void Session::handleRead(const std::error_code &error, size_t bytes_transferred,
   if (!error) {
     std::cout << "read data is " << data_ << std::endl;
     // 发送数据
-    Send(data_, bytes_transferred);
+    // Send(data_, bytes_transferred);
     memset(data_, 0, maxLength);
     socket_.async_read_some(asio::buffer(data_, maxLength),
                             std::bind(&Session::handleRead, this,
@@ -42,19 +42,29 @@ void Session::handleWrite(const std::error_code &error,
 Session::Session(asio::io_context &ioc, std::string filePath)
     : socket_(ioc), reader(filePath) {}
 
-void Session::Send(char *packet, int maxLength) {
-  while (reader.result != FTPResult::FileResult::over) {
-  }
+void Session::Send() {
+
   bool pending = false;
   std::lock_guard<std::mutex> lock(send_lock_);
   if (send_que_.size() > 0) {
     pending = true;
   }
-  send_que_.push(std::make_shared<Packet>(packet, maxLength));
   if (pending) {
     return;
   }
-  asio::async_write(socket_, asio::buffer(packet, maxLength),
-                    std::bind(&Session::handleWrite, this,
-                              std::placeholders::_1, shared_from_this()));
+  while (reader.result != FTPResult::FileResult::over) {
+    send_que_.push(
+        std::make_shared<Packet>(reader.readfile(maxLength), maxLength));
+  }
+
+  send_que_.pop();
+  if (!send_que_.empty()) {
+    auto &packet = send_que_.front();
+
+    asio::async_write(socket_, asio::buffer(packet->data_, packet->len_),
+                      std::bind(&Session::handleWrite, this,
+                                std::placeholders::_1, shared_from_this()));
+  } else {
+    std::cout << "handle write failed " << std::endl;
+  }
 }
