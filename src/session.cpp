@@ -1,6 +1,7 @@
 #include "reader.hpp"
 #include "result.hpp"
 #include <asio.hpp>
+#include <functional>
 #include <iostream>
 #include <packet.hpp>
 #include <session.hpp>
@@ -53,8 +54,7 @@ void Session::Send() {
     return;
   }
   while (reader.result != FTPResult::FileResult::over) {
-    send_que_.push(
-        std::make_shared<Packet>(reader.readfile(maxLength), maxLength));
+    send_que_.push(std::make_shared<Packet>(reader.readfile(maxLength)));
   }
 
   send_que_.pop();
@@ -67,4 +67,12 @@ void Session::Send() {
   } else {
     std::cout << "handle write failed " << std::endl;
   }
+}
+
+void Session::start() {
+  memset(data_, 0, maxLength);
+  socket_.async_read_some(asio::buffer(data_, maxLength),
+                          std::bind(&Session::handleRead, this,
+                                    std::placeholders::_1,
+                                    std::placeholders::_2, shared_from_this()));
 }
